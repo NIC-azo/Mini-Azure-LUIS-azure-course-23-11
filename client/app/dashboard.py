@@ -20,34 +20,47 @@ except ModuleNotFoundError:
     from config import TARGET_SERVER_IP, SERVER_PORT, get_api_base_url
 
 # ====================================================================
-# Configuración de Página y Estilos
+# Configuración de Página y Estilos Visuales
 # ====================================================================
 st.set_page_config(
-    page_title="Mini-Azure LUIS | Agro Dashboard",
+    page_title="Mini-Azure LUIS",
     page_icon="🌾",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 st.markdown(
     """
     <style>
     .main-title {
-        font-size: 2.2rem;
+        font-size: 2.1rem;
         font-weight: 700;
         color: #38BDF8;
         margin-bottom: 0.2rem;
     }
     .sub-title {
-        font-size: 1.05rem;
+        font-size: 0.98rem;
         color: #94A3B8;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.2rem;
     }
     div[data-testid="stMetric"] {
-        background-color: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 10px;
-        padding: 12px 16px;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95)) !important;
+        border: 1px solid rgba(56, 189, 248, 0.25) !important;
+        border-radius: 12px !important;
+        padding: 16px 20px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+    }
+    div[data-testid="stMetric"] label, div[data-testid="stMetric"] div[data-testid="stMetricLabel"] p {
+        color: #94A3B8 !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+    }
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+        color: #38BDF8 !important;
+        font-size: 1.85rem !important;
+        font-weight: 700 !important;
     }
     .badge-critico {
         background-color: rgba(239, 68, 68, 0.2);
@@ -79,20 +92,67 @@ st.markdown(
 )
 
 # ====================================================================
-# Barra Lateral: Conectividad y Control LAN
+# Detección de Dispositivo Móvil (User-Agent)
+# ====================================================================
+def detectar_dispositivo_movil() -> bool:
+    """Detecta si la petición HTTP proviene de un smartphone o tablet (Android / iOS)."""
+    try:
+        if hasattr(st, "context") and hasattr(st.context, "headers"):
+            ua = st.context.headers.get("user-agent", "").lower()
+            palabras_movil = ["android", "mobile", "iphone", "ipod", "blackberry", "windows phone"]
+            return any(w in ua for w in palabras_movil)
+    except Exception:
+        pass
+    return False
+
+es_movil = detectar_dispositivo_movil()
+param_rol_solicitado = st.query_params.get("rol", "").lower()
+
+# REGLA ESTRICTA DE SEGURIDAD Y SEPARACIÓN DE ROLES:
+# 1. En el Celular: NUNCA ve KPIs ni gráficos. Exclusivamente envía reportes y recibe la inferencia de LUIS.
+# 2. En la PC: Visualiza exclusivamente el Dashboard analítico en tiempo real y sus KPIs.
+if es_movil:
+    modo_activo = "operario"
+    st.query_params["rol"] = "operario"
+else:
+    # En PC por defecto abre el Dashboard (Manager)
+    # Permite alternar a simulación móvil si se pasa ?rol=operario
+    if param_rol_solicitado == "operario":
+        modo_activo = "operario"
+    else:
+        modo_activo = "dashboard"
+        st.query_params["rol"] = "dashboard"
+
+# ====================================================================
+# Barra Lateral
 # ====================================================================
 st.sidebar.markdown("# 🍇 Mini-Azure LUIS")
 st.sidebar.caption("Motor NLP On-Premise LAN (Ica)")
 
+if es_movil:
+    st.sidebar.info("📱 **Terminal Móvil de Campo**\n\nAcceso exclusivo a reportes operativos para operarios.")
+else:
+    st.sidebar.caption("🖥️ **Estación Central: Monitoreo & Control**")
+    modo_pc = st.sidebar.radio(
+        "Vista PC",
+        ["Dashboard de Monitoreo", "Simular Chat Móvil"],
+        index=0 if modo_activo == "dashboard" else 1,
+    )
+    if modo_pc == "Simular Chat Móvil":
+        modo_activo = "operario"
+    else:
+        modo_activo = "dashboard"
+
+st.sidebar.divider()
+
+# Configuración de Conexión
 server_ip = st.sidebar.text_input(
     "IP del Servidor (PC A)",
     value=TARGET_SERVER_IP,
-    help="En laboratorio ingrese la IPv4 de la máquina servidor (ej. 192.168.1.XX)",
+    help="En laboratorio o zona Wi-Fi ingrese la IPv4 del Servidor (ej. 192.168.1.XX o 192.168.137.1)",
 )
 server_port = st.sidebar.text_input("Puerto API", value=SERVER_PORT)
-
 API_BASE = get_api_base_url(server_ip, server_port)
-st.sidebar.markdown(f"**URL Activa:** `{API_BASE}`")
 
 # Verificación de Conectividad con /health
 server_online = False
@@ -102,314 +162,303 @@ try:
     if resp.status_code == 200:
         server_online = True
         server_info = resp.json()
-        st.sidebar.success("🟢 Servidor Conectado (HTTP 200)")
-        st.sidebar.caption(
-            f"Versión: `{server_info.get('version', '1.0.0')}` | Umbral: `{server_info.get('umbral_confianza', 0.65)}`"
-        )
+        st.sidebar.success("🟢 Servidor Conectado")
     else:
-        st.sidebar.error(f"🔴 Error del Servidor (HTTP {resp.status_code})")
+        st.sidebar.error(f"🔴 Error Servidor (HTTP {resp.status_code})")
 except Exception:
     st.sidebar.error("🔴 Servidor Inaccesible")
-    st.sidebar.caption("Compruebe la IP y que `nlp-server` esté encendido.")
 
-st.sidebar.divider()
-
-# Botón de Peligro: Reiniciar Estadísticas
-if st.sidebar.button("🗑️ Reiniciar Estadísticas", use_container_width=True, type="secondary"):
-    try:
-        r = requests.post(f"{API_BASE}/nlp/estadisticas/reiniciar", timeout=3)
-        if r.status_code == 200:
-            st.sidebar.success("Estadísticas restablecidas a cero.")
-            time.sleep(0.4)
-            st.rerun()
-        else:
-            st.sidebar.error("No se pudo reiniciar.")
-    except Exception as e:
-        st.sidebar.error(f"Error de conexión: {e}")
-
-st.sidebar.divider()
-st.sidebar.markdown(
-    """
-    **Guía Rápida LAN:**
-    1. Asegure que la PC Servidor tiene la regla de Firewall abierta en el puerto 8001.
-    2. Ingrese la IP privada de la PC Servidor arriba.
-    3. Monitoree las métricas en tiempo real.
-    """
-)
-
-# ====================================================================
-# Encabezado Principal
-# ====================================================================
-st.markdown('<div class="main-title">🌾 Mini-Azure LUIS — Agro Dashboard</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="sub-title">Motor de Comprensión de Lenguaje Natural On-Premise para Agroexportación (Ica: Uva de Mesa y Espárragos)</div>',
-    unsafe_allow_html=True,
-)
-
-# ====================================================================
-# Panel de Envío y Simulador Operativo
-# ====================================================================
-tab_individual, tab_lote = st.tabs(["📝 Envío Individual", "🚀 Simulador de Lote (8 Casos de Prueba)"])
-
-# -------------------------------------------------------------
-# Pestaña 1: Envío Individual
-# -------------------------------------------------------------
-with tab_individual:
-    ejemplos_rapidos = [
-        "-- Seleccionar un ejemplo rápido o escribir libremente abajo --",
-        "La camara de frio 2 subio a 9 grados con 120 cajas de uva red globe",
-        "se malogro la faja trasportadora de la linea 3 en packing urjente",
-        "cuantos pallets de esparrago verde tenemos listos en almacen",
-        "programar camion reefer para despacho de 20 pallets lote L-409 hacia pisco",
-        "el lote L-512 de uva sweet globe paso control de calidad sin observaciones",
-        "revisar lo que quedo pendiente ayer en la tarde con el encargado",
-    ]
-
-    seleccion_ejemplo = st.selectbox("Ejemplos representativos:", ejemplos_rapidos)
-    texto_defecto = "" if seleccion_ejemplo.startswith("--") else seleccion_ejemplo
-
-    texto_input = st.text_area(
-        "Mensaje u orden operativa en lenguaje natural:",
-        value=texto_defecto,
-        placeholder="Ej: La camara 2 reporta 9 grados con 100 cajas de uva red globe...",
-        height=80,
+# Controles exclusivos de la PC Central (No visibles en celular)
+auto_refresh = False
+if not es_movil and modo_activo == "dashboard":
+    auto_refresh = st.sidebar.toggle(
+        "🔄 Auto-actualizar cada 3s",
+        value=True,
+        help="Monitorea en tiempo real las llegadas de mensajes desde los celulares",
     )
 
-    col_btn1, col_btn2 = st.columns([1, 4])
-    with col_btn1:
-        btn_analizar = st.button("⚡ Analizar Comando", type="primary", use_container_width=True)
+    st.sidebar.divider()
+    if st.sidebar.button("🗑️ Reiniciar Estadísticas", use_container_width=True, type="secondary"):
+        try:
+            r = requests.post(f"{API_BASE}/nlp/estadisticas/reiniciar", timeout=3)
+            if r.status_code == 200:
+                st.sidebar.success("Estadísticas restablecidas a cero.")
+                time.sleep(0.3)
+                st.rerun()
+        except Exception as e:
+            st.sidebar.error(f"Error al reiniciar: {e}")
 
-    if btn_analizar:
-        if not texto_input.strip():
-            st.warning("Por favor ingrese un mensaje para analizar.")
-        elif not server_online:
-            st.error("No se puede conectar con el servidor NLP. Verifique la IP en la barra lateral.")
-        else:
-            with st.spinner("Procesando comando con Scikit-Learn..."):
+    with st.sidebar.expander("⚡ Simular Lote (8 Mensajes)", expanded=False):
+        st.caption("Puebla métricas de prueba sin usar el celular:")
+        if st.button("🚀 Ejecutar Lote en Servidor", use_container_width=True):
+            bateria = [
+                "La camara de frio 2 subio a 9 grados con 120 cajas de uva red globe",
+                "se malogro la faja trasportadora de la linea 3 en packing urjente",
+                "cuantos pallets de esparrago verde tenemos listos en almacen",
+                "programar camion reefer para despacho de 20 pallets lote L-409 hacia pisco",
+                "el lote L-512 de uva sweet globe paso control de calidad sin observaciones",
+                "compresor del tunel 1 presentando ruido fuerte y perdida de frio",
+                "necesito saber cuantas jabas cosecheras y bolsas SO2 quedan en bodega",
+                "revisar lo que quedo pendiente ayer en la tarde con el encargado",
+            ]
+            for msg in bateria:
                 try:
-                    t_inicio = time.time()
-                    res_raw = requests.post(
-                        f"{API_BASE}/nlp/entender-comando",
-                        json={"texto": texto_input.strip()},
-                        timeout=5,
-                    )
-                    latencia_ms = (time.time() - t_inicio) * 1000
-
-                    if res_raw.status_code == 200:
-                        resultado = res_raw.json()
-
-                        intencion = resultado.get("intencion", "")
-                        conf_int = resultado.get("confianza_intencion", 0.0)
-                        sentimiento = resultado.get("sentimiento", "")
-                        conf_sent = resultado.get("confianza_sentimiento", 0.0)
-                        entidades = resultado.get("entidades", {})
-                        accion = resultado.get("accion_sugerida", "")
-                        palabras = resultado.get("palabras_clave", [])
-
-                        st.success(f"Inferencia completada en {latencia_ms:.1f} ms")
-
-                        # Tarjeta de Resultados
-                        with st.container(border=True):
-                            c1, c2, c3, c4 = st.columns(4)
-                            c1.metric("Intención Detectada", intencion)
-                            c2.metric("Confianza de Intención", f"{conf_int * 100:.1f}%")
-                            c3.metric("Sentimiento", sentimiento, f"{conf_sent * 100:.1f}%")
-
-                            # Formato de Acción Sugerida según criticidad
-                            if accion in ["ALERTA_CRITICA_CALIDAD", "ORDEN_MANTENIMIENTO_URGENTE"]:
-                                c4.markdown(f"**Acción:**<br><span class='badge-critico'>🚨 {accion}</span>", unsafe_allow_html=True)
-                            elif accion == "DERIVAR_A_SUPERVISOR":
-                                c4.markdown(f"**Acción:**<br><span class='badge-alerta'>⚠️ {accion}</span>", unsafe_allow_html=True)
-                            else:
-                                c4.markdown(f"**Acción:**<br><span class='badge-ok'>✅ {accion}</span>", unsafe_allow_html=True)
-
-                            st.divider()
-
-                            # Entidades Extraídas
-                            st.markdown("**🏷️ Entidades Extraídas:**")
-                            if entidades:
-                                col_e1, col_e2, col_e3, col_e4 = st.columns(4)
-                                with col_e1:
-                                    st.markdown(f"**Área:** {', '.join(entidades.get('AREA', [])) or '—'}")
-                                with col_e2:
-                                    st.markdown(f"**Producto:** {', '.join(entidades.get('PRODUCTO', [])) or '—'}")
-                                with col_e3:
-                                    st.markdown(f"**Cantidad:** {', '.join(entidades.get('CANTIDAD', [])) or '—'}")
-                                with col_e4:
-                                    st.markdown(f"**Código Lote:** {', '.join(entidades.get('CODIGO_LOTE', [])) or '—'}")
-                            else:
-                                st.info("No se identificaron entidades nombradas específicas en el texto.")
-
-                            if palabras:
-                                st.caption(f"Palabras Clave (TF-IDF): {', '.join(palabras)}")
-
-                            with st.expander("Ver JSON Crudo de Respuesta"):
-                                st.json(resultado)
-                    else:
-                        st.error(f"Error {res_raw.status_code}: {res_raw.text}")
-                except Exception as ex:
-                    st.error(f"Falla de conexión: {ex}")
-
-# -------------------------------------------------------------
-# Pestaña 2: Simulador de Lote (8 Casos de Prueba)
-# -------------------------------------------------------------
-with tab_lote:
-    st.markdown(
-        "Ejecuta una batería de **8 mensajes representativos** de la operación de Ica (incluye casos con jerga, errores ortográficos, múltiples entidades y casos ambiguos) para poblar las métricas acumuladas."
-    )
-
-    bateria_mensajes = [
-        "La camara de frio 2 subio a 9 grados con 120 cajas de uva red globe",
-        "se malogro la faja trasportadora de la linea 3 en packing urjente",
-        "cuantos pallets de esparrago verde tenemos listos en almacen",
-        "programar camion reefer para despacho de 20 pallets lote L-409 hacia pisco",
-        "el lote L-512 de uva sweet globe paso control de calidad sin observaciones",
-        "compresor del tunel 1 presentando ruido fuerte y perdida de frio",
-        "necesito saber cuantas jabas cosecheras y bolsas SO2 quedan en bodega",
-        "revisar lo que quedo pendiente ayer en la tarde con el encargado",
-    ]
-
-    with st.expander("Ver mensajes del Lote de Prueba", expanded=False):
-        for idx, m in enumerate(bateria_mensajes, 1):
-            st.markdown(f"**{idx}.** {m}")
-
-    if st.button("🚀 Ejecutar Lote Completo (8 mensajes)", type="primary"):
-        if not server_online:
-            st.error("Servidor no disponible para procesar el lote.")
-        else:
-            progreso = st.progress(0, text="Iniciando envío de lote...")
-            exitos = 0
-            for i, msg in enumerate(bateria_mensajes):
-                try:
-                    requests.post(
-                        f"{API_BASE}/nlp/entender-comando",
-                        json={"texto": msg},
-                        timeout=5,
-                    )
-                    exitos += 1
+                    requests.post(f"{API_BASE}/nlp/entender-comando", json={"texto": msg}, timeout=4)
                 except Exception:
                     pass
-                porcentaje = int(((i + 1) / len(bateria_mensajes)) * 100)
-                progreso.progress(porcentaje, text=f"Enviando mensaje {i+1} de {len(bateria_mensajes)}...")
-                time.sleep(0.08)
-
-            st.success(f"Lote procesado con éxito: {exitos}/{len(bateria_mensajes)} mensajes registrados.")
-            time.sleep(0.4)
+            st.success("8 mensajes enviados exitosamente.")
+            time.sleep(0.3)
             st.rerun()
 
-st.divider()
 
 # ====================================================================
-# Dashboard Analítico en Tiempo Real
+# VISTA 1: CELULAR (SOLO REPORTES OPERATIVOS + RESPUESTA DEL MODELO)
 # ====================================================================
-st.subheader("📊 Métricas y KPIs de la Operación en Tiempo Real")
+if modo_activo == "operario":
+    st.markdown('<div class="main-title">📱 Reporte Operativo de Campo</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="sub-title">Envía incidencias de cámaras, packing, calidad o despacho. El modelo NLP enrutará tu orden al instante.</div>',
+        unsafe_allow_html=True,
+    )
 
-# Obtener estadísticas de /nlp/estadisticas
-stats = {
-    "total_mensajes": 0,
-    "por_intencion": {},
-    "por_sentimiento": {},
-    "confianza_promedio": 0.0,
-    "tasa_derivacion": 0.0,
-    "entidades_frecuentes": {},
-    "ultimos_mensajes": [],
-}
+    if not server_online:
+        st.error("🔴 No se puede conectar con el servidor NLP. Verifique la IP en el menú lateral.")
 
-if server_online:
-    try:
-        r_stats = requests.get(f"{API_BASE}/nlp/estadisticas", timeout=3)
-        if r_stats.status_code == 200:
-            stats = r_stats.json()
-    except Exception:
-        st.warning("No se pudieron cargar las estadísticas del servidor.")
+    # Inicializar historial del chat
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = [
+            {
+                "role": "assistant",
+                "content": "👋 Hola. Escribe tu reporte operativo (ej: *'camara 2 subio a 9 grados'* o *'se malogro faja linea 3'*):",
+                "data": None,
+            }
+        ]
 
-total_mensajes = stats.get("total_mensajes", 0)
-por_intencion = stats.get("por_intencion", {})
-por_sentimiento = stats.get("por_sentimiento", {})
-confianza_promedio = stats.get("confianza_promedio", 0.0)
-tasa_derivacion = stats.get("tasa_derivacion", 0.0)
-entidades_frecuentes = stats.get("entidades_frecuentes", {})
-ultimos_mensajes = stats.get("ultimos_mensajes", [])
+    # Sugerencias rápidas táctiles para celular
+    st.markdown("**⚡ Sugerencias rápidas:**")
+    sugerencias = [
+        "La camara de frio 2 subio a 9 grados con 120 cajas de uva red globe",
+        "se malogro la faja trasportadora de la linea 3 en packing urjente",
+        "cuantos pallets de esparrago verde tenemos listos en almacen",
+        "programar camion reefer para despacho de 20 pallets lote L-409 hacia pisco",
+    ]
 
-# Cálculo de Alertas Críticas (Reporte Calidad o Falla Equipo con acciones críticas)
-alertas_criticas = 0
-for m in ultimos_mensajes:
-    if m.get("accion_sugerida") in ["ALERTA_CRITICA_CALIDAD", "ORDEN_MANTENIMIENTO_URGENTE"]:
-        alertas_criticas += 1
-# Si no hay bitácora completa, estimar con suma de intenciones críticas
-if total_mensajes > len(ultimos_mensajes) and alertas_criticas == 0:
-    alertas_criticas = por_intencion.get("FALLA_EQUIPO", 0) + por_intencion.get("REPORTE_CALIDAD", 0)
+    cols_sug = st.columns(2)
+    sug_seleccionada = None
+    for idx, s in enumerate(sugerencias):
+        col_t = cols_sug[idx % 2]
+        label = s if len(s) < 32 else s[:30] + "..."
+        if col_t.button(f"📌 {label}", key=f"sug_{idx}", use_container_width=True):
+            sug_seleccionada = s
 
-# Fila de 4 KPIs
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-kpi1.metric("Total Mensajes Procesados", total_mensajes)
-kpi2.metric("Confianza Promedio", f"{confianza_promedio * 100:.1f}%")
-kpi3.metric("Tasa de Derivación", f"{tasa_derivacion * 100:.1f}%", help="Proporción de mensajes con INTENCION_NO_CLARA")
-kpi4.metric("Alertas Críticas Registradas", alertas_criticas, help="ALERTA_CRITICA_CALIDAD y ORDEN_MANTENIMIENTO_URGENTE")
+    # Mostrar mensajes
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+            if msg.get("data"):
+                data = msg["data"]
+                intencion = data.get("intencion", "")
+                conf_int = data.get("confianza_intencion", 0.0)
+                sentimiento = data.get("sentimiento", "")
+                accion = data.get("accion_sugerida", "")
+                entidades = data.get("entidades", {})
 
-st.markdown("<br>", unsafe_allow_html=True)
+                with st.container(border=True):
+                    c1, c2, c3 = st.columns(3)
+                    c1.markdown(f"**Intención:** `{intencion}`")
+                    c2.markdown(f"**Confianza:** `{conf_int * 100:.1f}%`")
+                    c3.markdown(f"**Sentimiento:** `{sentimiento}`")
 
-# Distribuciones Visuales (Gráficos)
-col_g1, col_g2 = st.columns(2)
+                    # Badge de acción sugerida
+                    if accion in ["ALERTA_CRITICA_CALIDAD", "ORDEN_MANTENIMIENTO_URGENTE"]:
+                        st.markdown(f"**Acción:** <span class='badge-critico'>🚨 {accion}</span>", unsafe_allow_html=True)
+                    elif accion == "DERIVAR_A_SUPERVISOR":
+                        st.markdown(f"**Acción:** <span class='badge-alerta'>⚠️ {accion}</span>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"**Acción:** <span class='badge-ok'>✅ {accion}</span>", unsafe_allow_html=True)
 
-with col_g1:
-    st.markdown("**Distribución por Intención Operativa**")
-    if por_intencion and any(v > 0 for v in por_intencion.values()):
-        df_intent = pd.DataFrame(
-            list(por_intencion.items()),
-            columns=["Intención", "Conteo"],
-        ).set_index("Intención")
-        st.bar_chart(df_intent, color="#2563EB", use_container_width=True)
-    else:
-        st.info("No hay datos de intenciones registrados aún.")
+                    # Entidades detectadas según enunciado
+                    if entidades:
+                        st.markdown("**🏷️ Entidades Detectadas:**")
+                        for k, v in entidades.items():
+                            val_str = ", ".join(v) if isinstance(v, list) else str(v)
+                            st.markdown(f"- **{k}:** `{val_str}`")
 
-with col_g2:
-    st.markdown("**Distribución por Sentimiento**")
-    if por_sentimiento and any(v > 0 for v in por_sentimiento.values()):
-        df_sent = pd.DataFrame(
-            list(por_sentimiento.items()),
-            columns=["Sentimiento", "Conteo"],
-        ).set_index("Sentimiento")
-        st.bar_chart(df_sent, color="#10B981", use_container_width=True)
-    else:
-        st.info("No hay datos de sentimientos registrados aún.")
+                    with st.expander("Ver JSON de Respuesta del Modelo"):
+                        st.json(data)
 
-# Entidades Frecuentes y Bitácora Reciente
-st.markdown("<br>", unsafe_allow_html=True)
-col_b1, col_b2 = st.columns([1, 2])
+    user_input = st.chat_input("Escribe el reporte operativo aquí...")
+    prompt_final = sug_seleccionada or user_input
 
-with col_b1:
-    st.markdown("**🏷️ Ranking de Entidades Más Reportadas**")
-    if entidades_frecuentes:
-        df_ent = pd.DataFrame(
-            list(entidades_frecuentes.items()),
-            columns=["Entidad / Recurso", "Frecuencia"],
-        ).head(8)
-        st.dataframe(df_ent, hide_index=True, use_container_width=True)
-    else:
-        st.info("Aún no se han acumulado entidades.")
+    if prompt_final:
+        # Registrar mensaje del usuario
+        st.session_state.chat_history.append({"role": "user", "content": prompt_final, "data": None})
+        with st.chat_message("user"):
+            st.markdown(prompt_final)
 
-with col_b2:
-    st.markdown("**📋 Bitácora Reciente de Mensajes (Últimos 15)**")
-    if ultimos_mensajes:
-        tabla_datos = []
-        for reg in ultimos_mensajes:
-            ts = reg.get("timestamp", "")
-            hora_fmt = ts[11:19] if len(ts) >= 19 else ts
-            ents = reg.get("entidades", {})
-            ents_resumen = ", ".join([f"{k}: {', '.join(v)}" for k, v in ents.items() if v]) or "—"
+        with st.chat_message("assistant"):
+            if not server_online:
+                st.error("No se pudo enviar. El servidor está desconectado.")
+            else:
+                with st.spinner("Procesando con LUIS Local..."):
+                    try:
+                        r = requests.post(f"{API_BASE}/nlp/entender-comando", json={"texto": prompt_final}, timeout=5)
+                        if r.status_code == 200:
+                            data = r.json()
+                            intencion = data.get("intencion", "")
+                            accion = data.get("accion_sugerida", "")
 
-            tabla_datos.append({
-                "Hora (UTC)": hora_fmt,
-                "Texto": reg.get("texto_original", ""),
-                "Intención": reg.get("intencion", ""),
-                "Conf. (%)": f"{float(reg.get('confianza_intencion', 0.0)) * 100:.1f}",
-                "Sent.": reg.get("sentimiento", ""),
-                "Entidades": ents_resumen,
-                "Acción Sugerida": reg.get("accion_sugerida", ""),
-            })
+                            resp_msg = f"✅ **Reporte procesado:** Intención `{intencion}` $\\rightarrow$ Acción `{accion}`"
+                            st.markdown(resp_msg)
 
-        df_bitacora = pd.DataFrame(tabla_datos)
-        st.dataframe(df_bitacora, hide_index=True, use_container_width=True)
-    else:
-        st.info("La bitácora se encuentra vacía. Ejecute el lote o envíe un mensaje individual.")
+                            with st.container(border=True):
+                                c1, c2, c3 = st.columns(3)
+                                c1.markdown(f"**Intención:** `{intencion}`")
+                                c2.markdown(f"**Confianza:** `{data.get('confianza_intencion', 0.0) * 100:.1f}%`")
+                                c3.markdown(f"**Sentimiento:** `{data.get('sentimiento', '')}`")
+
+                                if accion in ["ALERTA_CRITICA_CALIDAD", "ORDEN_MANTENIMIENTO_URGENTE"]:
+                                    st.markdown(f"**Acción:** <span class='badge-critico'>🚨 {accion}</span>", unsafe_allow_html=True)
+                                elif accion == "DERIVAR_A_SUPERVISOR":
+                                    st.markdown(f"**Acción:** <span class='badge-alerta'>⚠️ {accion}</span>", unsafe_allow_html=True)
+                                else:
+                                    st.markdown(f"**Acción:** <span class='badge-ok'>✅ {accion}</span>", unsafe_allow_html=True)
+
+                                entidades = data.get("entidades", {})
+                                if entidades:
+                                    st.markdown("**🏷️ Entidades Detectadas:**")
+                                    for k, v in entidades.items():
+                                        val_str = ", ".join(v) if isinstance(v, list) else str(v)
+                                        st.markdown(f"- **{k}:** `{val_str}`")
+
+                                with st.expander("Ver JSON de Respuesta del Modelo"):
+                                    st.json(data)
+
+                            st.session_state.chat_history.append({
+                                "role": "assistant",
+                                "content": resp_msg,
+                                "data": data,
+                            })
+                        else:
+                            st.error(f"Error {r.status_code}: {r.text}")
+                    except Exception as ex:
+                        st.error(f"Falla de conexión: {ex}")
+
+
+# ====================================================================
+# VISTA 2: PC CENTRAL (SOLO DASHBOARD ANALÍTICO Y KPIS EN TIEMPO REAL)
+# ====================================================================
+else:
+    st.markdown('<div class="main-title">🌾 Mini-Azure LUIS — Dashboard de Monitoreo</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="sub-title">Tablero de Control Operativo Agroexportador en Tiempo Real (Ica: Uva de Mesa y Espárragos)</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Consulta a GET /nlp/estadisticas
+    stats = {
+        "total_mensajes": 0,
+        "por_intencion": {},
+        "por_sentimiento": {},
+        "confianza_promedio": 0.0,
+        "tasa_derivacion": 0.0,
+        "entidades_frecuentes": {},
+        "ultimos_mensajes": [],
+    }
+    if server_online:
+        try:
+            r_stats = requests.get(f"{API_BASE}/nlp/estadisticas", timeout=3)
+            if r_stats.status_code == 200:
+                stats = r_stats.json()
+        except Exception:
+            st.warning("No se pudieron cargar las estadísticas del servidor.")
+
+    total_mensajes = stats.get("total_mensajes", 0)
+    por_intencion = stats.get("por_intencion", {})
+    por_sentimiento = stats.get("por_sentimiento", {})
+    confianza_promedio = stats.get("confianza_promedio", 0.0)
+    tasa_derivacion = stats.get("tasa_derivacion", 0.0)
+    entidades_frecuentes = stats.get("entidades_frecuentes", {})
+    ultimos_mensajes = stats.get("ultimos_mensajes", [])
+
+    # Alertas críticas
+    alertas_criticas = 0
+    for m in ultimos_mensajes:
+        if m.get("accion_sugerida") in ["ALERTA_CRITICA_CALIDAD", "ORDEN_MANTENIMIENTO_URGENTE"]:
+            alertas_criticas += 1
+    if total_mensajes > len(ultimos_mensajes) and alertas_criticas == 0:
+        alertas_criticas = por_intencion.get("FALLA_EQUIPO", 0) + por_intencion.get("REPORTE_CALIDAD", 0)
+
+    # 1. KPIs Rápidos (según Sección 4 - Fase 3 del enunciado)
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Total Mensajes Procesados", total_mensajes)
+    k2.metric("Confianza Promedio", f"{confianza_promedio * 100:.1f}%")
+    k3.metric("Tasa de Derivación", f"{tasa_derivacion * 100:.1f}%", help="Proporción con INTENCION_NO_CLARA")
+    k4.metric("Alertas Críticas Registradas", alertas_criticas, help="ALERTA_CRITICA_CALIDAD y ORDEN_MANTENIMIENTO_URGENTE")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 2. Distribución Visual (según enunciado: conteo o gráfico por intención y por sentimiento)
+    cg1, cg2 = st.columns(2)
+    with cg1:
+        st.markdown("**Distribución por Intención Operativa**")
+        if por_intencion and any(v > 0 for v in por_intencion.values()):
+            df_intent = pd.DataFrame(
+                list(por_intencion.items()),
+                columns=["Intención", "Conteo"],
+            ).set_index("Intención")
+            st.bar_chart(df_intent, color="#2563EB", use_container_width=True)
+        else:
+            st.info("Sin registros de intenciones aún.")
+
+    with cg2:
+        st.markdown("**Distribución por Sentimiento**")
+        if por_sentimiento and any(v > 0 for v in por_sentimiento.values()):
+            df_sent = pd.DataFrame(
+                list(por_sentimiento.items()),
+                columns=["Sentimiento", "Conteo"],
+            ).set_index("Sentimiento")
+            st.bar_chart(df_sent, color="#10B981", use_container_width=True)
+        else:
+            st.info("Sin registros de sentimientos aún.")
+
+    # 3. Ranking de Entidades y Bitácora Reciente (según enunciado)
+    st.markdown("<br>", unsafe_allow_html=True)
+    cb1, cb2 = st.columns([1, 2])
+    with cb1:
+        st.markdown("**🏷️ Entidades y Áreas Más Reportadas**")
+        if entidades_frecuentes:
+            df_ent = pd.DataFrame(
+                list(entidades_frecuentes.items()),
+                columns=["Entidad / Recurso", "Frecuencia"],
+            ).head(8)
+            st.dataframe(df_ent, hide_index=True, use_container_width=True)
+        else:
+            st.info("Aún no se han acumulado entidades.")
+
+    with cb2:
+        st.markdown("**📋 Bitácora Reciente de Mensajes (Últimos 15)**")
+        if ultimos_mensajes:
+            tabla = []
+            for reg in ultimos_mensajes:
+                ts = reg.get("timestamp", "")
+                hora = ts[11:19] if len(ts) >= 19 else ts
+                ents = reg.get("entidades", {})
+                ents_resumen = ", ".join([f"{k}: {', '.join(v) if isinstance(v, list) else v}" for k, v in ents.items() if v]) or "—"
+                tabla.append({
+                    "Hora (UTC)": hora,
+                    "Texto": reg.get("texto_original", ""),
+                    "Intención": reg.get("intencion", ""),
+                    "Conf. (%)": f"{float(reg.get('confianza_intencion', 0.0)) * 100:.1f}",
+                    "Sent.": reg.get("sentimiento", ""),
+                    "Entidades": ents_resumen,
+                    "Acción Sugerida": reg.get("accion_sugerida", ""),
+                })
+            st.dataframe(pd.DataFrame(tabla), hide_index=True, use_container_width=True)
+        else:
+            st.info("Bitácora vacía. Los reportes enviados desde los celulares aparecerán aquí en vivo.")
+
+    # Auto-actualización periódica de la pantalla de la PC
+    if auto_refresh:
+        time.sleep(3)
+        st.rerun()

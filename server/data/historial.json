@@ -160,6 +160,22 @@
         "globe paso"
       ],
       "accion_sugerida": "REGISTRAR_CONTROL_CALIDAD"
+    },
+    {
+      "id": 8,
+      "timestamp": "2026-11-23T17:07:48.140565+00:00",
+      "texto_original": "El envio se ha retrasado coordinar Nueva fecha",
+      "intencion": "INTENCION_NO_CLARA",
+      "confianza_intencion": 0.566,
+      "sentimiento": "NEUTRAL",
+      "confianza_sentimiento": 0.4535,
+      "entidades": {},
+      "palabras_clave": [
+        "retrasado",
+        "envio",
+        "coordinar"
+      ],
+      "accion_sugerida": "DERIVAR_A_SUPERVISOR"
     }
   ]
 }
