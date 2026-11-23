@@ -35,37 +35,40 @@ st.markdown(
     .main-title {
         font-size: 2.2rem;
         font-weight: 700;
-        color: #1E3A8A;
+        color: #38BDF8;
         margin-bottom: 0.2rem;
     }
     .sub-title {
         font-size: 1.05rem;
-        color: #4B5563;
+        color: #94A3B8;
         margin-bottom: 1.5rem;
     }
-    .stMetric {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 8px;
-        padding: 10px 14px;
+    div[data-testid="stMetric"] {
+        background-color: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        padding: 12px 16px;
     }
     .badge-critico {
-        background-color: #FEE2E2;
-        color: #991B1B;
+        background-color: rgba(239, 68, 68, 0.2);
+        color: #FCA5A5;
+        border: 1px solid #EF4444;
         padding: 4px 10px;
         border-radius: 6px;
         font-weight: 600;
     }
     .badge-alerta {
-        background-color: #FEF3C7;
-        color: #92400E;
+        background-color: rgba(245, 158, 11, 0.2);
+        color: #FCD34D;
+        border: 1px solid #F59E0B;
         padding: 4px 10px;
         border-radius: 6px;
         font-weight: 600;
     }
     .badge-ok {
-        background-color: #D1FAE5;
-        color: #065F46;
+        background-color: rgba(16, 185, 129, 0.2);
+        color: #6EE7B7;
+        border: 1px solid #10B981;
         padding: 4px 10px;
         border-radius: 6px;
         font-weight: 600;
@@ -78,9 +81,8 @@ st.markdown(
 # ====================================================================
 # Barra Lateral: Conectividad y Control LAN
 # ====================================================================
-st.sidebar.image("https://img.icons8.com/color/96/grape.png", width=64)
-st.sidebar.title("Configuración de Red")
-st.sidebar.caption("Mini-Azure LUIS (On-Premise LAN)")
+st.sidebar.markdown("# 🍇 Mini-Azure LUIS")
+st.sidebar.caption("Motor NLP On-Premise LAN (Ica)")
 
 server_ip = st.sidebar.text_input(
     "IP del Servidor (PC A)",

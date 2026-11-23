@@ -2,12 +2,86 @@
   "registros": [
     {
       "id": 1,
-      "timestamp": "2026-11-23T15:54:56.510253+00:00",
-      "texto_original": "programar camion reefer para despacho de 20 pallets lote L-409 hacia pisco",
-      "intencion": "SOLICITUD_DESPACHO",
-      "confianza_intencion": 0.7399,
+      "timestamp": "2026-11-23T16:03:18.255312+00:00",
+      "texto_original": "La camara de frio 2 subio a 9 grados con 120 cajas de uva red globe",
+      "intencion": "REPORTE_CALIDAD",
+      "confianza_intencion": 0.6516,
+      "sentimiento": "NEGATIVO",
+      "confianza_sentimiento": 0.6157,
+      "entidades": {
+        "AREA": [
+          "camara de frio 2"
+        ],
+        "PRODUCTO": [
+          "uva red globe"
+        ],
+        "CANTIDAD": [
+          "9 grados",
+          "120 cajas"
+        ]
+      },
+      "palabras_clave": [
+        "120",
+        "120 cajas",
+        "frio subio",
+        "grados 120"
+      ],
+      "accion_sugerida": "ALERTA_CRITICA_CALIDAD"
+    },
+    {
+      "id": 2,
+      "timestamp": "2026-11-23T16:03:18.272470+00:00",
+      "texto_original": "se malogro la faja trasportadora de la linea 3 en packing urjente",
+      "intencion": "FALLA_EQUIPO",
+      "confianza_intencion": 0.6658,
+      "sentimiento": "NEGATIVO",
+      "confianza_sentimiento": 0.7367,
+      "entidades": {
+        "AREA": [
+          "linea 3",
+          "packing"
+        ]
+      },
+      "palabras_clave": [
+        "malogro faja",
+        "packing urjente",
+        "malogro",
+        "trasportadora linea"
+      ],
+      "accion_sugerida": "ORDEN_MANTENIMIENTO_URGENTE"
+    },
+    {
+      "id": 3,
+      "timestamp": "2026-11-23T16:03:18.289141+00:00",
+      "texto_original": "cuantos pallets de esparrago verde tenemos listos en almacen",
+      "intencion": "CONSULTA_INVENTARIO",
+      "confianza_intencion": 0.6574,
       "sentimiento": "NEUTRAL",
-      "confianza_sentimiento": 0.6599,
+      "confianza_sentimiento": 0.6793,
+      "entidades": {
+        "AREA": [
+          "almacen"
+        ],
+        "PRODUCTO": [
+          "esparrago verde"
+        ]
+      },
+      "palabras_clave": [
+        "listos almacen",
+        "tenemos listos",
+        "verde tenemos",
+        "cuantos pallets"
+      ],
+      "accion_sugerida": "CONSULTAR_ERP_ALMACEN"
+    },
+    {
+      "id": 4,
+      "timestamp": "2026-11-23T16:03:18.309421+00:00",
+      "texto_original": "programar camion para despacho de 20 pallets lote L-409 hacia pisco",
+      "intencion": "SOLICITUD_DESPACHO",
+      "confianza_intencion": 0.7115,
+      "sentimiento": "NEUTRAL",
+      "confianza_sentimiento": 0.6621,
       "entidades": {
         "CANTIDAD": [
           "20 pallets"
@@ -23,6 +97,69 @@
         "hacia pisco"
       ],
       "accion_sugerida": "PROGRAMAR_LOGISTICA_SALIDA"
+    },
+    {
+      "id": 5,
+      "timestamp": "2026-11-23T16:03:18.332791+00:00",
+      "texto_original": "el lote L-512 de uva sweet globe paso control de calidad sin observaciones",
+      "intencion": "REPORTE_CALIDAD",
+      "confianza_intencion": 0.668,
+      "sentimiento": "POSITIVO",
+      "confianza_sentimiento": 0.7041,
+      "entidades": {
+        "PRODUCTO": [
+          "uva sweet globe"
+        ],
+        "CODIGO_LOTE": [
+          "L-512"
+        ]
+      },
+      "palabras_clave": [
+        "512",
+        "512 uva",
+        "calidad observaciones",
+        "globe paso"
+      ],
+      "accion_sugerida": "REGISTRAR_CONTROL_CALIDAD"
+    },
+    {
+      "id": 6,
+      "timestamp": "2026-11-23T16:03:18.351731+00:00",
+      "texto_original": "revisar lo que quedo pendiente ayer en la tarde con el encargado",
+      "intencion": "INTENCION_NO_CLARA",
+      "confianza_intencion": 0.3176,
+      "sentimiento": "NEGATIVO",
+      "confianza_sentimiento": 0.4068,
+      "entidades": {},
+      "palabras_clave": [
+        "quedo",
+        "revisar"
+      ],
+      "accion_sugerida": "DERIVAR_A_SUPERVISOR"
+    },
+    {
+      "id": 7,
+      "timestamp": "2026-11-23T16:05:30.335813+00:00",
+      "texto_original": "el lote L-512 de uva sweet globe paso control de calidad sin observaciones",
+      "intencion": "REPORTE_CALIDAD",
+      "confianza_intencion": 0.668,
+      "sentimiento": "POSITIVO",
+      "confianza_sentimiento": 0.7041,
+      "entidades": {
+        "PRODUCTO": [
+          "uva sweet globe"
+        ],
+        "CODIGO_LOTE": [
+          "L-512"
+        ]
+      },
+      "palabras_clave": [
+        "512",
+        "512 uva",
+        "calidad observaciones",
+        "globe paso"
+      ],
+      "accion_sugerida": "REGISTRAR_CONTROL_CALIDAD"
     }
   ]
 }
