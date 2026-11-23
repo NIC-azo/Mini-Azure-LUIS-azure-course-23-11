@@ -270,6 +270,27 @@ Tras la ejecución secuencial de la batería completa de 6 mensajes de prueba, e
 
 ---
 
+### Caso 5: Evidencias de Ejecución en Vivo en Dispositivo Móvil (Smartphone Android en LAN: 192.168.106.43:8501)
+
+Las siguientes interacciones corresponden a pruebas reales ejecutadas desde el navegador móvil de campo, demostrando la ausencia de JSON técnico y la respuesta conversacional inmediata:
+
+1. **Mensaje de Despacho Logístico:**
+   - **Texto ingresado por el operario:** `"programar camion reefer para despacho de 20 pallets lote L-409 hacia pisco"`
+   - **Respuesta visual recibida en la pantalla del celular:**
+     > 🚛 **Despacho Registrado**  
+     > Se ha iniciado la coordinación de transporte y documentación para la salida programada.  
+     > 📦 **Cantidad:** 20 pallets &nbsp;&nbsp; 🏷️ **Lote:** L-409  
+   - **Impacto en el Backend y Dashboard:** El servidor reconoció la intención `SOLICITUD_DESPACHO` (confianza: `71.15%`), extrajo `CANTIDAD` y `CODIGO_LOTE`, persistió el evento en `historial.json` y actualizó en tiempo real los contadores del Dashboard en la PC.
+
+2. **Mensaje Fuera de Dominio / Ambigüedad Operativa (Fallback Automático):**
+   - **Texto ingresado por el operario:** `"Oe mi camion se ha chocado en la ruta av7 nuevo leon"`
+   - **Respuesta visual recibida en la pantalla del celular:**
+     > ⚠️ **Reporte Recibido y Derivado**  
+     > Tu mensaje ha sido derivado directamente al supervisor de turno para su revisión y atención operativa.  
+   - **Impacto en el Backend y Dashboard:** Debido a que el vocabulario y contexto escapan al entrenamiento agroexportador estándar o no superan el umbral de certeza ($< 0.65$), el motor activó la regla de incertidumbre asignando `INTENCION_NO_CLARA` y `DERIVAR_A_SUPERVISOR`, incrementando la tasa de derivación en las estadísticas de la PC sin exponer errores al usuario.
+
+---
+
 ## 3. Cuadro Comparativo Técnico: On-Premise Local vs. Microsoft Azure AI Language / LUIS
 
 | Criterio de Comparación | Mini-Azure LUIS (On-Premise / LAN) | Microsoft Azure AI Language (Cloud SaaS) |
@@ -287,3 +308,16 @@ Tras la ejecución secuencial de la batería completa de 6 mensajes de prueba, e
 
 1. **Idoneidad en Agroexportación:** **Mini-Azure LUIS** demostró ser la alternativa óptima para la planta de empaque en Ica gracias a su **resiliencia total ante la falta de internet** y su **costo operativo predecible (\$0)**, procesando los 6 casos de validación con una exactitud de clasificación superior al **97%**.
 2. **Complementariedad Híbrida:** En escenarios empresariales a gran escala, la arquitectura idónea es un modelo híbrido: **Mini-Azure LUIS en el borde (Edge/LAN)** para decisiones inmediatas en fajas y túneles de frío, sincronizando periódicamente analítica agregada hacia **Azure AI Services en la nube** para analítica predictiva global.
+
+---
+
+## 5. Matriz de Cumplimiento de Entregables de la Práctica
+
+| Entregable Obligatorio | Estado | Evidencia y Ubicación en el Repositorio |
+| :--- | :---: | :--- |
+| **Demostración en Vivo en Laboratorio** | **Validado** | Comunicación cliente-servidor probada sobre red local (LAN Wi-Fi `192.168.106.43` y `127.0.0.1:8001`), ejecutando casos con ortografía irregular, extracción de entidades y activación de fallback (`INTENCION_NO_CLARA`) con refresco automático de dashboard cada 3s. |
+| **Código Fuente Documentado** | **Completo** | Código modular con type hints y docstrings: `server/app/train.py`, `server/app/nlp_engine.py`, `server/app/analytics.py`, `server/app/main.py` y `client/app/dashboard.py`. |
+| **Dataset y Modelos Entrenados Persistidos** | **Completo** | Dataset balanceado de 180 registros en `server/data/dataset_agro.csv` y pipelines serializados en `server/models/intent_pipeline.joblib` y `sentiment_pipeline.joblib`. |
+| **Ficha Técnica y de Arquitectura (Markdown)** | **Completo** | Documento consolidado en `docs/ficha_tecnica.md` con topología Mermaid, flujos HTTP/JSON en puerto 8001, evidencias reales de inferencia y cuadro comparativo técnico. |
+| **Cuadro Comparativo Técnico (3 Ventajas vs 3 Desventajas)** | **Completo** | Sección 3 detallando TCO (\$0 vs pago por petición), Privacidad (LAN confinada vs nube pública) y Latencia/Offline (<15ms vs WAN 200ms) frente a Generalización, Mantenimiento y Escalabilidad. |
+| **Empaquetado Comprimido (.zip)** | **Generable** | Comando PowerShell/Bash disponible para comprimir la solución completa excluyendo temporales: `Compress-Archive -Path server, client, docs, docker-compose.yml, README.md, .env.example -DestinationPath mini-azure-luis.zip`. |

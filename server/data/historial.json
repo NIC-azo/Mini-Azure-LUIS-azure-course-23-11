@@ -249,6 +249,44 @@
         "camion"
       ],
       "accion_sugerida": "DERIVAR_A_SUPERVISOR"
+    },
+    {
+      "id": 13,
+      "timestamp": "2026-11-23T18:35:48.848109+00:00",
+      "texto_original": "programar camion reefer para despacho de 20 pallets lote L-409 hacia pisco",
+      "intencion": "SOLICITUD_DESPACHO",
+      "confianza_intencion": 0.7399,
+      "sentimiento": "NEUTRAL",
+      "confianza_sentimiento": 0.6599,
+      "entidades": {
+        "CANTIDAD": [
+          "20 pallets"
+        ],
+        "CODIGO_LOTE": [
+          "L-409"
+        ]
+      },
+      "palabras_clave": [
+        "20 pallets",
+        "409 hacia",
+        "despacho 20",
+        "hacia pisco"
+      ],
+      "accion_sugerida": "PROGRAMAR_LOGISTICA_SALIDA"
+    },
+    {
+      "id": 14,
+      "timestamp": "2026-11-23T18:36:19.716103+00:00",
+      "texto_original": "Oe mi camion se ha chocado en la ruta av7 nuevo leon",
+      "intencion": "INTENCION_NO_CLARA",
+      "confianza_intencion": 0.5941,
+      "sentimiento": "NEUTRAL",
+      "confianza_sentimiento": 0.4244,
+      "entidades": {},
+      "palabras_clave": [
+        "camion"
+      ],
+      "accion_sugerida": "DERIVAR_A_SUPERVISOR"
     }
   ]
 }
