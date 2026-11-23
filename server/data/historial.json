@@ -1,3 +1,28 @@
 {
-  "registros": []
+  "registros": [
+    {
+      "id": 1,
+      "timestamp": "2026-11-23T15:54:56.510253+00:00",
+      "texto_original": "programar camion reefer para despacho de 20 pallets lote L-409 hacia pisco",
+      "intencion": "SOLICITUD_DESPACHO",
+      "confianza_intencion": 0.7399,
+      "sentimiento": "NEUTRAL",
+      "confianza_sentimiento": 0.6599,
+      "entidades": {
+        "CANTIDAD": [
+          "20 pallets"
+        ],
+        "CODIGO_LOTE": [
+          "L-409"
+        ]
+      },
+      "palabras_clave": [
+        "20 pallets",
+        "409 hacia",
+        "despacho 20",
+        "hacia pisco"
+      ],
+      "accion_sugerida": "PROGRAMAR_LOGISTICA_SALIDA"
+    }
+  ]
 }
