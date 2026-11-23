@@ -9,6 +9,7 @@ services:
     env_file:
       - .env
     volumes:
+      - ./server/app:/app/app
       - ./server/data:/app/data
       - ./server/models:/app/models
     develop:
@@ -31,6 +32,8 @@ services:
       - "8501:8501"
     env_file:
       - .env
+    volumes:
+      - ./client/app:/app/app
     develop:
       watch:
         - action: sync
