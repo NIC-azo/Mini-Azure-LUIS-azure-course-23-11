@@ -191,6 +191,64 @@
         "camion"
       ],
       "accion_sugerida": "DERIVAR_A_SUPERVISOR"
+    },
+    {
+      "id": 10,
+      "timestamp": "2026-11-23T18:27:43.747281+00:00",
+      "texto_original": "El camion no llego temprano",
+      "intencion": "INTENCION_NO_CLARA",
+      "confianza_intencion": 0.5037,
+      "sentimiento": "NEGATIVO",
+      "confianza_sentimiento": 0.3665,
+      "entidades": {},
+      "palabras_clave": [
+        "llego",
+        "camion"
+      ],
+      "accion_sugerida": "DERIVAR_A_SUPERVISOR"
+    },
+    {
+      "id": 11,
+      "timestamp": "2026-11-23T18:28:09.695452+00:00",
+      "texto_original": "La camara de frio 2 subio a 9 grados con 120 cajas de uva red globe",
+      "intencion": "REPORTE_CALIDAD",
+      "confianza_intencion": 0.6516,
+      "sentimiento": "NEGATIVO",
+      "confianza_sentimiento": 0.6157,
+      "entidades": {
+        "AREA": [
+          "camara de frio 2"
+        ],
+        "PRODUCTO": [
+          "uva red globe"
+        ],
+        "CANTIDAD": [
+          "9 grados",
+          "120 cajas"
+        ]
+      },
+      "palabras_clave": [
+        "120",
+        "120 cajas",
+        "frio subio",
+        "grados 120"
+      ],
+      "accion_sugerida": "ALERTA_CRITICA_CALIDAD"
+    },
+    {
+      "id": 12,
+      "timestamp": "2026-11-23T18:33:44.761896+00:00",
+      "texto_original": "El camion llego tarde",
+      "intencion": "INTENCION_NO_CLARA",
+      "confianza_intencion": 0.5037,
+      "sentimiento": "NEGATIVO",
+      "confianza_sentimiento": 0.3665,
+      "entidades": {},
+      "palabras_clave": [
+        "llego",
+        "camion"
+      ],
+      "accion_sugerida": "DERIVAR_A_SUPERVISOR"
     }
   ]
 }

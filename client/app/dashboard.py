@@ -236,11 +236,54 @@ if not es_movil and modo_activo == "dashboard":
 
 
 # ====================================================================
-# VISTA 1: CELULAR / OPERARIO (SOLO ENVÍO + RESPUESTA MODELO SEGÚN ENUNCIADO)
+# Función Auxiliar: Respuesta Operativa Humana (Sin JSON ni estadísticas)
+# ====================================================================
+def formatear_respuesta_humana(data: dict) -> str:
+    """
+    Convierte la respuesta del backend en un mensaje conversacional, claro
+    y operativo para el personal de campo, sin exponer JSON, porcentajes ni estadísticas.
+    """
+    accion = data.get("accion_sugerida", "DERIVAR_A_SUPERVISOR")
+    entidades = data.get("entidades", {})
+
+    detalles = []
+    if entidades.get("AREA"):
+        areas = ", ".join(entidades["AREA"])
+        detalles.append(f"📍 **Ubicación:** {areas}")
+    if entidades.get("PRODUCTO"):
+        prods = ", ".join(entidades["PRODUCTO"])
+        detalles.append(f"🍇 **Producto:** {prods}")
+    if entidades.get("CANTIDAD"):
+        cants = ", ".join(entidades["CANTIDAD"])
+        detalles.append(f"📦 **Cantidad:** {cants}")
+    if entidades.get("CODIGO_LOTE"):
+        lotes = ", ".join(entidades["CODIGO_LOTE"])
+        detalles.append(f"🏷️ **Lote:** {lotes}")
+
+    bloque_detalles = ""
+    if detalles:
+        bloque_detalles = "\n\n" + "\n".join(detalles)
+
+    if accion == "ALERTA_CRITICA_CALIDAD":
+        return f"🚨 **Alerta de Calidad Notificada**\n\nSe ha registrado la incidencia y se emitió una alerta inmediata al equipo de Control de Calidad y Supervisión.{bloque_detalles}"
+    elif accion == "ORDEN_MANTENIMIENTO_URGENTE":
+        return f"🛠️ **Orden de Mantenimiento Emitida**\n\nSe ha generado la solicitud técnica para la inspección y reparación urgente del equipo.{bloque_detalles}"
+    elif accion == "CONSULTAR_ERP_ALMACEN":
+        return f"📋 **Consulta de Inventario Recibida**\n\nSolicitud enviada al sistema de almacén para verificar el stock disponible.{bloque_detalles}"
+    elif accion == "PROGRAMAR_LOGISTICA_SALIDA":
+        return f"🚛 **Despacho Registrado**\n\nSe ha iniciado la coordinación de transporte y documentación para la salida programada.{bloque_detalles}"
+    elif accion == "REGISTRAR_CONTROL_CALIDAD":
+        return f"✅ **Control Conforme**\n\nSe registró la aprobación del lote en inspección sin observaciones.{bloque_detalles}"
+    else:  # DERIVAR_A_SUPERVISOR
+        return "⚠️ **Reporte Recibido y Derivado**\n\nTu mensaje ha sido derivado directamente al supervisor de turno para su revisión y atención operativa."
+
+
+# ====================================================================
+# VISTA 1: CELULAR / OPERARIO (RESPUESTA CONVERSACIONAL HUMANA)
 # ====================================================================
 if modo_activo == "operario":
     st.markdown('<div class="main-title">📱 Reporte Operativo de Campo</div>', unsafe_allow_html=True)
-    st.caption("Envío de incidencias operativas a Mini-Azure LUIS (Ica: Uva de Mesa y Espárragos)")
+    st.caption("Terminal de campo para envío de incidencias operativas (Ica: Uva de Mesa y Espárragos)")
 
     if not server_online:
         st.error("🔴 Servidor NLP fuera de línea. Verifique la conectividad de red con el host central.")
@@ -250,7 +293,7 @@ if modo_activo == "operario":
         st.session_state.chat_history = [
             {
                 "role": "assistant",
-                "content": "👋 **Terminal Operativa Móvil:** Escriba su reporte de campo o seleccione una sugerencia rápida:",
+                "content": "👋 Hola, escribe tu reporte operativo (cámaras de frío, fajas, inventario o despachos):",
             }
         ]
 
@@ -275,12 +318,11 @@ if modo_activo == "operario":
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             if isinstance(msg["content"], dict):
-                # Respuesta directa del modelo según especificación del enunciado
-                st.json(msg["content"])
+                st.markdown(formatear_respuesta_humana(msg["content"]))
             else:
                 st.markdown(msg["content"])
 
-    user_input = st.chat_input("Escribe el reporte operativo aquí...")
+    user_input = st.chat_input("Escribe tu reporte operativo aquí...")
     prompt_final = sug_seleccionada or user_input
 
     if prompt_final:
@@ -293,16 +335,17 @@ if modo_activo == "operario":
             if not server_online:
                 st.error("No se pudo enviar. El servidor está desconectado.")
             else:
-                with st.spinner("Consultando modelo LUIS Local..."):
+                with st.spinner("Enviando reporte..."):
                     try:
                         r = requests.post(f"{API_BASE}/nlp/entender-comando", json={"texto": prompt_final}, timeout=5)
                         if r.status_code == 200:
                             data = r.json()
-                            # El celular muestra EXCLUSIVAMENTE la respuesta JSON del modelo de inferencia
-                            st.json(data)
+                            # Respuesta conversacional amigable para el operario sin JSON ni estadísticas
+                            respuesta_humana = formatear_respuesta_humana(data)
+                            st.markdown(respuesta_humana)
                             st.session_state.chat_history.append({
                                 "role": "assistant",
-                                "content": data,
+                                "content": respuesta_humana,
                             })
                         else:
                             st.error(f"Error {r.status_code}: {r.text}")
