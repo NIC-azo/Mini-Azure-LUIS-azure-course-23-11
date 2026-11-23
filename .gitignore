@@ -1,0 +1,29 @@
+# Entorno y credenciales
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Modelos y caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs y temporales
+*.log
+.docker_temp/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo

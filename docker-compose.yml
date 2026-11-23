@@ -1,0 +1,40 @@
+services:
+  nlp-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: nlp-server
+    ports:
+      - "${SERVER_PORT:-8001}:8001"
+    env_file:
+      - .env
+    volumes:
+      - ./server/data:/app/data
+      - ./server/models:/app/models
+    develop:
+      watch:
+        - action: sync
+          path: ./server/app
+          target: /app/app
+        - action: sync
+          path: ./server/data
+          target: /app/data
+        - action: rebuild
+          path: ./server/requirements.txt
+
+  nlp-client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: nlp-client
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    develop:
+      watch:
+        - action: sync
+          path: ./client/app
+          target: /app/app
+        - action: rebuild
+          path: ./client/requirements.txt
