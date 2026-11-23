@@ -54,6 +54,27 @@ flowchart LR
    - `./server/data` $\rightarrow$ `/app/data` con `action: sync` (permite editar `dataset_agro.csv` y persistir `historial.json` en el host).
    - `./client/app` $\rightarrow$ `/app/app` con `action: sync` (actualización instantánea de Streamlit sin reconstruir imágenes).
 
+### 1.1. Arquitectura de Clientes y Separación Estricta de Dispositivos (Fase 3)
+
+Para cumplir con la separación de responsabilidades y el principio de menor privilegio operativo del fundo, el cliente implementa una bifurcación estricta según el dispositivo:
+
+1. **Terminal Operativa Móvil (Celulares en Campo / LAN Wi-Fi):**
+   - **Acceso:** Mediante smartphone a `http://<IP_SERVIDOR>:8501/`.
+   - **Detección Automática:** Detección de hardware mediante la cabecera HTTP `User-Agent` (`android`, `mobile`, `iphone`).
+   - **Aislamiento Total de la Barra Lateral:** Ocultamiento total de `st.sidebar` y del control de despliegue `>>` mediante CSS prioritario (`section[data-testid="stSidebar"], [data-testid="collapsedControl"] { display: none !important; }`). El operario no puede acceder a configuraciones ni alternar vistas.
+   - **Cero KPIs ni Métricas en Móvil:** El celular **no muestra ningún KPI, tarjeta de métricas, gráfico ni bitácora administrativa**.
+   - **Respuesta Pura del Modelo:** Al enviar una orden operativa (ej. *"El camion llego tarde"* o *"La camara de frio 2 subio a 9 grados con 120 cajas de uva red globe"*), el chat presenta **directamente la respuesta JSON nativa del modelo LUIS Local** devuelta por `POST /nlp/entender-comando`, incluyendo intención, confianza, sentimiento, entidades y acción sugerida (o fallback a `INTENCION_NO_CLARA` / `DERIVAR_A_SUPERVISOR` ante incertidumbre < 0.65).
+
+2. **Estación Central de Monitoreo (Dashboard Ligero en PC):**
+   - **Acceso:** Desde el navegador de la PC central a `http://localhost:8501/`.
+   - **Consumo Analítico:** Realiza peticiones a `GET /nlp/estadisticas` y `GET /health`.
+   - **Métricas y Visualizaciones en Tiempo Real:**
+     - 4 KPIs analíticos: Total Mensajes Procesados, Confianza Promedio, Tasa de Derivación y Alertas Críticas Registradas (con estilo Dark Mode de alto contraste).
+     - Gráficos de barras interactivos por Intención Operativa y por Sentimiento.
+     - Ranking de Entidades y Áreas más reportadas.
+     - Bitácora reciente con los últimos 15 eventos registrados.
+     - Auto-actualización periódica cada 3 segundos (`auto_refresh=True`), permitiendo observar en la pantalla de la PC cómo se actualizan las métricas y los gráficos en vivo cuando los operarios reportan desde sus teléfonos móviles.
+
 ---
 
 ## 2. Evidencias Reales de Ejecución (Respuestas JSON del Servidor)

@@ -176,6 +176,21 @@
         "coordinar"
       ],
       "accion_sugerida": "DERIVAR_A_SUPERVISOR"
+    },
+    {
+      "id": 9,
+      "timestamp": "2026-11-23T17:22:45.169895+00:00",
+      "texto_original": "El camion llego tarde",
+      "intencion": "INTENCION_NO_CLARA",
+      "confianza_intencion": 0.5037,
+      "sentimiento": "NEGATIVO",
+      "confianza_sentimiento": 0.3665,
+      "entidades": {},
+      "palabras_clave": [
+        "llego",
+        "camion"
+      ],
+      "accion_sugerida": "DERIVAR_A_SUPERVISOR"
     }
   ]
 }

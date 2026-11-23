@@ -88,12 +88,22 @@ En caso afirmativo, la intención y el sentimiento se mapean automáticamente a 
 
 ## 🖥️ Cliente y Dashboard Streamlit (Puerto 8501)
 
-La interfaz web ofrece:
-1. **Control de Conexión LAN (Sidebar):** Campo para ingresar la IP del servidor en el laboratorio (con resolución interna automática a `http://nlp-server:8001` en pruebas locales con Docker).
-2. **Indicador de Conectividad:** Semáforo en vivo conectado a `/health`.
-3. **Pestaña de Envío Individual:** Caja de texto con ejemplos rápidos para evaluar mensajes libres y visualizar tarjetas con badges de criticidad, entidades y JSON de respuesta.
-4. **Pestaña Simulador de Lote:** Batería de 8 mensajes predefinidos con barra de progreso para poblar métricas en segundos.
-5. **Panel de Métricas en Tiempo Real:** 4 tarjetas KPI, 2 gráficos de barras (Intención y Sentimiento), ranking de entidades más reportadas y tabla dinámica con la bitácora reciente.
+La interfaz web implementa una separación estricta de responsabilidades según el dispositivo:
+
+1. **Terminal Operativa Móvil (Celulares Android / iOS en Campo):**
+   - **Detección Automática:** Inspecciona la cabecera `User-Agent`.
+   - **Ocultamiento Total de Sidebar:** Suprime la barra lateral y su botón de despliegue (`>>`).
+   - **Cero KPIs ni Métricas:** No muestra ningún indicador analítico, gráfico ni bitácora global.
+   - **Respuesta Pura del Modelo:** El operario ingresa su reporte y recibe directamente el objeto JSON de inferencia devuelto por `POST /nlp/entender-comando` (`texto_original`, `intencion`, `confianza_intencion`, `sentimiento`, `entidades` y `accion_sugerida`).
+
+2. **Estación Central de Monitoreo (Dashboard Ligero en PC):**
+   - **Control de Red LAN:** Configuración de IP/puerto y verificación con `/health`.
+   - **Panel Analítico en Vivo (`GET /nlp/estadisticas`):**
+     - 4 KPIs: Total Mensajes Procesados, Confianza Promedio, Tasa de Derivación y Alertas Críticas (diseño Dark Mode de alto contraste).
+     - 2 Gráficos de barras interactivos (Distribución por Intención y Sentimiento).
+     - Ranking de Entidades y Áreas más reportadas.
+     - Bitácora dinámica de los últimos 15 eventos registrados.
+     - **Auto-actualización cada 3s:** Para observar en la pantalla central cómo se actualizan las métricas en tiempo real a medida que los operarios envían reportes desde el campo.
 
 ---
 

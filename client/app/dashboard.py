@@ -109,14 +109,34 @@ es_movil = detectar_dispositivo_movil()
 param_rol_solicitado = st.query_params.get("rol", "").lower()
 
 # REGLA ESTRICTA DE SEGURIDAD Y SEPARACIÓN DE ROLES:
-# 1. En el Celular: NUNCA ve KPIs ni gráficos. Exclusivamente envía reportes y recibe la inferencia de LUIS.
-# 2. En la PC: Visualiza exclusivamente el Dashboard analítico en tiempo real y sus KPIs.
+# 1. En el Celular (Terminal Operativa de Campo):
+#    - NUNCA ve KPIs, métricas globales, gráficos ni bitácora administrativa.
+#    - La barra lateral se oculta completamente vía CSS.
+#    - Envía el reporte u orden operativa y recibe DIRECTAMENTE la respuesta JSON del modelo de inferencia LUIS Local según el enunciado.
+# 2. En la PC (Estación Central de Monitoreo):
+#    - Visualiza exclusivamente el Dashboard analítico en tiempo real consumiendo GET /nlp/estadisticas y sus KPIs con auto-refresco.
 if es_movil:
     modo_activo = "operario"
     st.query_params["rol"] = "operario"
+    # Ocultar completamente la barra lateral y su botón de despliegue en celulares
+    st.markdown(
+        """
+        <style>
+        section[data-testid="stSidebar"], [data-testid="collapsedControl"] {
+            display: none !important;
+        }
+        .block-container {
+            padding-top: 1.5rem !important;
+            padding-bottom: 2rem !important;
+            max-width: 100% !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 else:
     # En PC por defecto abre el Dashboard (Manager)
-    # Permite alternar a simulación móvil si se pasa ?rol=operario
+    # Permite alternar a simulación móvil si se pasa ?rol=operario o desde el menú
     if param_rol_solicitado == "operario":
         modo_activo = "operario"
     else:
@@ -124,17 +144,18 @@ else:
         st.query_params["rol"] = "dashboard"
 
 # ====================================================================
-# Barra Lateral
+# Barra Lateral (Solo disponible y visible en PC)
 # ====================================================================
-st.sidebar.markdown("# 🍇 Mini-Azure LUIS")
-st.sidebar.caption("Motor NLP On-Premise LAN (Ica)")
+server_ip = TARGET_SERVER_IP
+server_port = SERVER_PORT
+auto_refresh = False
 
-if es_movil:
-    st.sidebar.info("📱 **Terminal Móvil de Campo**\n\nAcceso exclusivo a reportes operativos para operarios.")
-else:
-    st.sidebar.caption("🖥️ **Estación Central: Monitoreo & Control**")
+if not es_movil:
+    st.sidebar.markdown("# 🍇 Mini-Azure LUIS")
+    st.sidebar.caption("Estación Central: Monitoreo & Control")
+
     modo_pc = st.sidebar.radio(
-        "Vista PC",
+        "Modo de Vista PC",
         ["Dashboard de Monitoreo", "Simular Chat Móvil"],
         index=0 if modo_activo == "dashboard" else 1,
     )
@@ -143,15 +164,16 @@ else:
     else:
         modo_activo = "dashboard"
 
-st.sidebar.divider()
+    st.sidebar.divider()
 
-# Configuración de Conexión
-server_ip = st.sidebar.text_input(
-    "IP del Servidor (PC A)",
-    value=TARGET_SERVER_IP,
-    help="En laboratorio o zona Wi-Fi ingrese la IPv4 del Servidor (ej. 192.168.1.XX o 192.168.137.1)",
-)
-server_port = st.sidebar.text_input("Puerto API", value=SERVER_PORT)
+    # Configuración de Conexión LAN
+    server_ip = st.sidebar.text_input(
+        "IP del Servidor (PC A)",
+        value=TARGET_SERVER_IP,
+        help="En laboratorio o zona Wi-Fi ingrese la IPv4 del Servidor (ej. 192.168.1.XX o 192.168.137.1)",
+    )
+    server_port = st.sidebar.text_input("Puerto API", value=SERVER_PORT)
+
 API_BASE = get_api_base_url(server_ip, server_port)
 
 # Verificación de Conectividad con /health
@@ -162,14 +184,16 @@ try:
     if resp.status_code == 200:
         server_online = True
         server_info = resp.json()
-        st.sidebar.success("🟢 Servidor Conectado")
+        if not es_movil:
+            st.sidebar.success("🟢 Servidor Conectado")
     else:
-        st.sidebar.error(f"🔴 Error Servidor (HTTP {resp.status_code})")
+        if not es_movil:
+            st.sidebar.error(f"🔴 Error Servidor (HTTP {resp.status_code})")
 except Exception:
-    st.sidebar.error("🔴 Servidor Inaccesible")
+    if not es_movil:
+        st.sidebar.error("🔴 Servidor Inaccesible")
 
-# Controles exclusivos de la PC Central (No visibles en celular)
-auto_refresh = False
+# Controles de la barra lateral en PC para el Dashboard
 if not es_movil and modo_activo == "dashboard":
     auto_refresh = st.sidebar.toggle(
         "🔄 Auto-actualizar cada 3s",
@@ -212,29 +236,25 @@ if not es_movil and modo_activo == "dashboard":
 
 
 # ====================================================================
-# VISTA 1: CELULAR (SOLO REPORTES OPERATIVOS + RESPUESTA DEL MODELO)
+# VISTA 1: CELULAR / OPERARIO (SOLO ENVÍO + RESPUESTA MODELO SEGÚN ENUNCIADO)
 # ====================================================================
 if modo_activo == "operario":
     st.markdown('<div class="main-title">📱 Reporte Operativo de Campo</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="sub-title">Envía incidencias de cámaras, packing, calidad o despacho. El modelo NLP enrutará tu orden al instante.</div>',
-        unsafe_allow_html=True,
-    )
+    st.caption("Envío de incidencias operativas a Mini-Azure LUIS (Ica: Uva de Mesa y Espárragos)")
 
     if not server_online:
-        st.error("🔴 No se puede conectar con el servidor NLP. Verifique la IP en el menú lateral.")
+        st.error("🔴 Servidor NLP fuera de línea. Verifique la conectividad de red con el host central.")
 
     # Inicializar historial del chat
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = [
             {
                 "role": "assistant",
-                "content": "👋 Hola. Escribe tu reporte operativo (ej: *'camara 2 subio a 9 grados'* o *'se malogro faja linea 3'*):",
-                "data": None,
+                "content": "👋 **Terminal Operativa Móvil:** Escriba su reporte de campo o seleccione una sugerencia rápida:",
             }
         ]
 
-    # Sugerencias rápidas táctiles para celular
+    # Sugerencias rápidas para el operario en campo
     st.markdown("**⚡ Sugerencias rápidas:**")
     sugerencias = [
         "La camara de frio 2 subio a 9 grados con 120 cajas de uva red globe",
@@ -251,48 +271,21 @@ if modo_activo == "operario":
         if col_t.button(f"📌 {label}", key=f"sug_{idx}", use_container_width=True):
             sug_seleccionada = s
 
-    # Mostrar mensajes
+    # Mostrar mensajes del chat
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-            if msg.get("data"):
-                data = msg["data"]
-                intencion = data.get("intencion", "")
-                conf_int = data.get("confianza_intencion", 0.0)
-                sentimiento = data.get("sentimiento", "")
-                accion = data.get("accion_sugerida", "")
-                entidades = data.get("entidades", {})
-
-                with st.container(border=True):
-                    c1, c2, c3 = st.columns(3)
-                    c1.markdown(f"**Intención:** `{intencion}`")
-                    c2.markdown(f"**Confianza:** `{conf_int * 100:.1f}%`")
-                    c3.markdown(f"**Sentimiento:** `{sentimiento}`")
-
-                    # Badge de acción sugerida
-                    if accion in ["ALERTA_CRITICA_CALIDAD", "ORDEN_MANTENIMIENTO_URGENTE"]:
-                        st.markdown(f"**Acción:** <span class='badge-critico'>🚨 {accion}</span>", unsafe_allow_html=True)
-                    elif accion == "DERIVAR_A_SUPERVISOR":
-                        st.markdown(f"**Acción:** <span class='badge-alerta'>⚠️ {accion}</span>", unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"**Acción:** <span class='badge-ok'>✅ {accion}</span>", unsafe_allow_html=True)
-
-                    # Entidades detectadas según enunciado
-                    if entidades:
-                        st.markdown("**🏷️ Entidades Detectadas:**")
-                        for k, v in entidades.items():
-                            val_str = ", ".join(v) if isinstance(v, list) else str(v)
-                            st.markdown(f"- **{k}:** `{val_str}`")
-
-                    with st.expander("Ver JSON de Respuesta del Modelo"):
-                        st.json(data)
+            if isinstance(msg["content"], dict):
+                # Respuesta directa del modelo según especificación del enunciado
+                st.json(msg["content"])
+            else:
+                st.markdown(msg["content"])
 
     user_input = st.chat_input("Escribe el reporte operativo aquí...")
     prompt_final = sug_seleccionada or user_input
 
     if prompt_final:
-        # Registrar mensaje del usuario
-        st.session_state.chat_history.append({"role": "user", "content": prompt_final, "data": None})
+        # Registrar mensaje enviado por el usuario
+        st.session_state.chat_history.append({"role": "user", "content": prompt_final})
         with st.chat_message("user"):
             st.markdown(prompt_final)
 
@@ -300,44 +293,16 @@ if modo_activo == "operario":
             if not server_online:
                 st.error("No se pudo enviar. El servidor está desconectado.")
             else:
-                with st.spinner("Procesando con LUIS Local..."):
+                with st.spinner("Consultando modelo LUIS Local..."):
                     try:
                         r = requests.post(f"{API_BASE}/nlp/entender-comando", json={"texto": prompt_final}, timeout=5)
                         if r.status_code == 200:
                             data = r.json()
-                            intencion = data.get("intencion", "")
-                            accion = data.get("accion_sugerida", "")
-
-                            resp_msg = f"✅ **Reporte procesado:** Intención `{intencion}` $\\rightarrow$ Acción `{accion}`"
-                            st.markdown(resp_msg)
-
-                            with st.container(border=True):
-                                c1, c2, c3 = st.columns(3)
-                                c1.markdown(f"**Intención:** `{intencion}`")
-                                c2.markdown(f"**Confianza:** `{data.get('confianza_intencion', 0.0) * 100:.1f}%`")
-                                c3.markdown(f"**Sentimiento:** `{data.get('sentimiento', '')}`")
-
-                                if accion in ["ALERTA_CRITICA_CALIDAD", "ORDEN_MANTENIMIENTO_URGENTE"]:
-                                    st.markdown(f"**Acción:** <span class='badge-critico'>🚨 {accion}</span>", unsafe_allow_html=True)
-                                elif accion == "DERIVAR_A_SUPERVISOR":
-                                    st.markdown(f"**Acción:** <span class='badge-alerta'>⚠️ {accion}</span>", unsafe_allow_html=True)
-                                else:
-                                    st.markdown(f"**Acción:** <span class='badge-ok'>✅ {accion}</span>", unsafe_allow_html=True)
-
-                                entidades = data.get("entidades", {})
-                                if entidades:
-                                    st.markdown("**🏷️ Entidades Detectadas:**")
-                                    for k, v in entidades.items():
-                                        val_str = ", ".join(v) if isinstance(v, list) else str(v)
-                                        st.markdown(f"- **{k}:** `{val_str}`")
-
-                                with st.expander("Ver JSON de Respuesta del Modelo"):
-                                    st.json(data)
-
+                            # El celular muestra EXCLUSIVAMENTE la respuesta JSON del modelo de inferencia
+                            st.json(data)
                             st.session_state.chat_history.append({
                                 "role": "assistant",
-                                "content": resp_msg,
-                                "data": data,
+                                "content": data,
                             })
                         else:
                             st.error(f"Error {r.status_code}: {r.text}")
